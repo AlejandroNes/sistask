@@ -1,40 +1,54 @@
-# Sistask
+# Mis gastos
 
-Proyecto base con Python, Flask-AppBuilder y MySQL. No instala ni modifica el servidor MySQL.
+Aplicación local de gestión de gastos con Python, Flask-AppBuilder y MySQL. Incluye CRUD de categorías, subcategorías, cuentas, gastos, presupuestos y gastos recurrentes; un dashboard; tres reportes mensuales; y un clasificador local que sugiere subcategorías a partir de gastos anteriores. No usa servicios externos.
 
-## Configuración
+## Instalación
 
-1. Activa el entorno virtual e instala las dependencias (si aún no están instaladas):
+Requisitos: Python 3.9 o superior y un servidor MySQL en funcionamiento. Desde la carpeta del proyecto:
 
-   ```bash
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-   Para crear el entorno en otra máquina: `python3 -m venv .venv`.
+Crea la base de datos y sus seis tablas ejecutando el script con un usuario autorizado en MySQL (agrega `-u` y `-p` si tu instalación lo necesita):
 
-2. Crea la base de datos en tu instalación de MySQL, por ejemplo:
+```bash
+mysql < sql/dbgastos.sql
+```
 
-   ```sql
-   CREATE DATABASE dbgastos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
+El script usa `CREATE TABLE IF NOT EXISTS`: no actualiza tablas existentes si tienen una estructura distinta. Flask-AppBuilder crea además sus propias tablas de seguridad cuando se inicia la aplicación.
 
-   El esquema de las seis tablas se encuentra en `sql/dbgastos.sql`; puedes crearlo con `mysql < sql/dbgastos.sql`.
+Copia la configuración de ejemplo y genera una clave secreta:
 
-3. Copia la configuración y edita `.env` con las credenciales MySQL:
+```bash
+cp .env.example .env
+python -c 'import secrets; print(secrets.token_hex(32))'
+```
 
-   ```bash
-   cp .env.example .env
-   python -c 'import secrets; print(secrets.token_hex(32))'
-   ```
+Edita `.env` y coloca el resultado en `SECRET_KEY`, junto con los datos de conexión a MySQL. No compartas ni subas este archivo. El usuario de MySQL debe tener permisos sobre `dbgastos`.
 
-   Sustituye `SECRET_KEY` por la clave generada. El usuario de MySQL debe tener permisos sobre la base de datos. No compartas ni subas `.env`.
+## Primer acceso
 
-4. Crea el usuario administrador e inicia la aplicación:
+Crea un administrador local. El comando te pedirá **correo y contraseña** en la terminal; la contraseña no se mostrará al escribirla:
 
-   ```bash
-   flask --app app fab create-admin
-   flask --app app run
-   ```
+```bash
+flask --app app crear-admin
+```
 
-   Abre http://127.0.0.1:5000. Flask-AppBuilder crea sus tablas de seguridad al iniciar; la base de datos debe existir previamente. El servidor `flask run` es para desarrollo.
+Inicia la aplicación:
+
+```bash
+flask --app app run
+```
+
+Abre <http://127.0.0.1:5000/> e inicia sesión con el correo y la contraseña creados. La aplicación almacena las contraseñas como hashes PBKDF2. Para detener el servidor pulsa `Ctrl+C`. El servidor integrado es para desarrollo local.
+
+## Uso
+
+En el dashboard encontrarás enlaces para gestionar las seis tablas. Primero crea una categoría, después una subcategoría y una cuenta; con ellas ya podrás registrar gastos y gastos recurrentes. Los presupuestos se asignan por categoría y mes. Las relaciones existentes impiden eliminar registros que estén siendo utilizados.
+
+La página de reportes permite filtrar gastos por categoría y por cuenta, y comparar el presupuesto con lo gastado. El asistente usa un modelo Naive Bayes local: necesita al menos tres gastos con descripción en dos subcategorías distintas y palabras conocidas. La sugerencia se debe revisar antes de registrar un gasto; el asistente no crea ni modifica registros.
+
+La aplicación tiene autenticación local y datos compartidos entre los usuarios autorizados; no implementa cuentas ni datos privados separados por usuario. No hay registro público ni recuperación de contraseña por correo.
