@@ -117,7 +117,7 @@ def dashboard():
 @app.route('/reportes')
 @login_required
 def reportes():
-    from flask import abort, request
+    from flask import abort, request, send_file
 
     hoy = date.today()
     try:
@@ -153,6 +153,11 @@ def reportes():
         ) t ON t.categoria_id = c.id
         WHERE p.mes = :mes AND p.anio = :anio ORDER BY c.nombre
     '''), params).mappings().all()
+    if request.args.get('formato') == 'pdf':
+        from app.pdf_reportes import generar_pdf
+        archivo = generar_pdf(mes, anio, categoria, cuenta, presupuesto)
+        return send_file(archivo, mimetype='application/pdf', as_attachment=True,
+                         download_name=f'reportes-{anio}-{mes:02d}.pdf')
     return render_template('reportes.html', mes=mes, anio=anio, categorias=categoria,
                            cuentas=cuenta, presupuestos=presupuesto)
 

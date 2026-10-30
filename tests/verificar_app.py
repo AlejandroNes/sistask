@@ -11,6 +11,7 @@ with app.app_context():
     assert client.get('/dashboard').status_code == 302
     assert client.get('/gastoview/list/').status_code == 302
     assert client.get('/reportes').status_code == 302
+    assert client.get('/reportes?formato=pdf').status_code == 302
     assert client.get('/asistente').status_code == 302
     assert b'Correo electr' in client.get('/login/').data
     assert client.post('/login/', data={'username': 'usuario-interno', 'password': 'clave-segura'}).status_code == 302
@@ -66,6 +67,13 @@ with app.app_context():
     assert b'12.50' in client.get('/dashboard').data
     reports = client.get('/reportes').data
     assert b'12.50' in reports and b'37.50' in reports
+    assert b'Descargar PDF' in reports
+    pdf = client.get(f'/reportes?mes={today.month}&anio={today.year}&formato=pdf')
+    assert pdf.status_code == 200 and pdf.mimetype == 'application/pdf'
+    assert pdf.data.startswith(b'%PDF-') and f'reportes-{today.year}-{today.month:02d}.pdf' in pdf.headers['Content-Disposition']
+    assert client.get('/reportes?mes=13&formato=pdf').status_code == 400
+    pdf_vacio = client.get('/reportes?mes=1&anio=1&formato=pdf')
+    assert pdf_vacio.status_code == 200 and pdf_vacio.data.startswith(b'%PDF-')
     assert client.get('/reportes?mes=13').status_code == 400
     assert client.get('/gastoview/show/' + str(gasto.id)).status_code == 200
     r = client.post('/gastoview/delete/' + str(gasto.id), follow_redirects=True)

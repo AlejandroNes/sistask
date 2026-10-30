@@ -49,7 +49,7 @@ Abre <http://127.0.0.1:5000/> e inicia sesión con el correo y la contraseña cr
 
 En el dashboard encontrarás enlaces para gestionar las seis tablas. Primero crea una categoría, después una subcategoría y una cuenta; con ellas ya podrás registrar gastos y gastos recurrentes. Los presupuestos se asignan por categoría y mes. Las relaciones existentes impiden eliminar registros que estén siendo utilizados.
 
-La página de reportes permite filtrar gastos por categoría y por cuenta, y comparar el presupuesto con lo gastado. El asistente usa un modelo Naive Bayes local: necesita al menos tres gastos con descripción en dos subcategorías distintas y palabras conocidas. La sugerencia se debe revisar antes de registrar un gasto; el asistente no crea ni modifica registros.
+La página de reportes permite filtrar gastos por categoría y por cuenta, comparar el presupuesto con lo gastado y descargar los tres reportes del período en PDF. El asistente usa un modelo Naive Bayes local: necesita al menos tres gastos con descripción en dos subcategorías distintas y palabras conocidas. La sugerencia se debe revisar antes de registrar un gasto; el asistente no crea ni modifica registros.
 
 La aplicación tiene autenticación local y datos compartidos entre los usuarios autorizados; no implementa cuentas ni datos privados separados por usuario. No hay registro público ni recuperación de contraseña por correo.
 
