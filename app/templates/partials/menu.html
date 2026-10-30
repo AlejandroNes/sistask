@@ -6,11 +6,20 @@
       {% for nombre, destino, prefijo in [
         ('Inicio', '/dashboard', '/dashboard'),
         ('Gastos', '/gastoview/list/', '/gastoview/'),
-        ('Categorías', '/categoriaview/list/', '/categoriaview/'),
-        ('Subcategorías', '/subcategoriaview/list/', '/subcategoriaview/'),
-        ('Cuentas', '/cuentaview/list/', '/cuentaview/'),
-        ('Presupuestos', '/presupuestoview/list/', '/presupuestoview/'),
         ('Recurrentes', '/gastorecurrenteview/list/', '/gastorecurrenteview/'),
+        ('Cuentas', '/cuentaview/list/', '/cuentaview/')
+      ] %}
+        <a href="{{ destino }}"{% if request.path.startswith(prefijo) %} class="site-nav-active" aria-current="page"{% endif %}>{{ nombre }}</a>
+      {% endfor %}
+      <details class="site-security site-categories{% if request.path.startswith('/categoriaview/') or request.path.startswith('/subcategoriaview/') %} site-section-active{% endif %}">
+        <summary>Categorías</summary>
+        <div class="site-security-menu">
+          <a href="/categoriaview/list/"{% if request.path.startswith('/categoriaview/') %} aria-current="page"{% endif %}>Categorías</a>
+          <a href="/subcategoriaview/list/"{% if request.path.startswith('/subcategoriaview/') %} aria-current="page"{% endif %}>Subcategorías</a>
+        </div>
+      </details>
+      {% for nombre, destino, prefijo in [
+        ('Presupuestos', '/presupuestoview/list/', '/presupuestoview/'),
         ('Reportes', '/reportes', '/reportes')
       ] %}
         <a href="{{ destino }}"{% if request.path.startswith(prefijo) %} class="site-nav-active" aria-current="page"{% endif %}>{{ nombre }}</a>
