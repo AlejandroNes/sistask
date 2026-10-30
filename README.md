@@ -16,8 +16,10 @@ Proyecto base con Python, Flask-AppBuilder y MySQL. No instala ni modifica el se
 2. Crea la base de datos en tu instalación de MySQL, por ejemplo:
 
    ```sql
-   CREATE DATABASE sistask CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE DATABASE dbgastos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
+
+   El esquema de las seis tablas se encuentra en `sql/dbgastos.sql`; puedes crearlo con `mysql < sql/dbgastos.sql`.
 
 3. Copia la configuración y edita `.env` con las credenciales MySQL:
 

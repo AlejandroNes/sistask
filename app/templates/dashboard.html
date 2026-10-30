@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · Mis gastos</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner"><a class="brand" href="/dashboard"><span class="brand-mark">✳</span> Mis gastos</a><span class="top-note">Tu resumen financiero</span></div></header>
+  <main>
+    <div class="heading"><div><p class="period">{{ periodo }}</p><h1>Tu dinero, más claro.</h1><p class="intro">Un vistazo a tus gastos y presupuestos de este mes.</p></div><span class="date-badge">Resumen mensual</span></div>
+    <section class="overview" aria-label="Resumen del mes">
+      <div class="main-stat"><span class="stat-label">Gastos del mes</span><strong>{{ '{:,.2f}'.format(gastos_mes) }}</strong><span class="stat-foot">Total registrado este mes</span></div>
+      <div class="side-stats"><div class="small-stat"><span class="stat-label">Presupuesto mensual</span><strong>{{ '{:,.2f}'.format(presupuesto) }}</strong><span class="muted">{% if not presupuesto %}Aún no tienes presupuestos{% else %}Límite total del mes{% endif %}</span></div><div class="small-stat"><span class="stat-label">Cuentas</span><strong>{{ cuentas }}</strong><span class="muted">{{ 'Cuenta registrada' if cuentas == 1 else 'Cuentas registradas' }}</span></div></div>
+    </section>
+    <section class="activity"><div class="section-heading"><div><h2>Gastos recientes</h2><p>Los últimos movimientos registrados.</p></div><span class="section-count">{{ recientes|length }} movimientos</span></div>
+      {% if recientes %}<div class="table-wrap"><table><thead><tr><th>Descripción</th><th>Cuenta</th><th>Fecha</th><th class="amount">Monto</th></tr></thead><tbody>{% for gasto in recientes %}<tr><td><strong>{{ gasto.descripcion or gasto.subcategoria }}</strong><small>{{ gasto.subcategoria }}</small></td><td>{{ gasto.cuenta }}</td><td>{{ gasto.fecha.strftime('%d/%m/%Y') }}</td><td class="amount">{{ '{:,.2f}'.format(gasto.monto) }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty"><span class="empty-icon">↗</span><div><strong>Todavía no hay gastos registrados</strong><p>Cuando agregues gastos, aparecerán aquí.</p></div></div>{% endif %}
+    </section>
+    <footer>Mis gastos <span>Una mejor vista de tu día a día.</span></footer>
+  </main>
+</body>
+</html>
