@@ -72,6 +72,17 @@ def crear_admin(correo, password):
         raise click.ClickException('No se pudo crear el administrador.')
     click.echo('Administrador creado correctamente.')
 
+@app.cli.command('cargar-ejemplos')
+def cargar_ejemplos_comando():
+    """Cargar ejemplos cuando las tablas de gastos estén vacías."""
+    from app.ejemplos import cargar_ejemplos
+    try:
+        cargar_ejemplos()
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
+    click.echo('Datos de ejemplo cargados correctamente.')
+
+
 from datetime import date
 from flask import render_template
 from sqlalchemy import text

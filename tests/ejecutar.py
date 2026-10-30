@@ -32,6 +32,14 @@ try:
     entorno = os.environ.copy()
     entorno.update(MYSQL_DATABASE=nombre, PYTHONPATH=str(ROOT))
     subprocess.run([sys.executable, str(ROOT / 'tests/verificar_app.py')], cwd=ROOT, env=entorno, check=True)
+    comando = [sys.executable, '-m', 'flask', '--app', 'app', 'cargar-ejemplos']
+    subprocess.run(comando, cwd=ROOT, env=entorno, check=True)
+    repeticion = subprocess.run(comando, cwd=ROOT, env=entorno, capture_output=True, text=True)
+    assert repeticion.returncode != 0 and 'tablas están vacías' in repeticion.stderr
+    with conexion.cursor() as cursor:
+        cursor.execute(f'SELECT COUNT(*) FROM `{nombre}`.gastos')
+        assert cursor.fetchone()[0] == 8
+    print('Carga de ejemplos y protección contra duplicados: correctas.')
 finally:
     if creada:
         with conexion.cursor() as cursor:

@@ -62,3 +62,13 @@ python tests/ejecutar.py
 ```
 
 El usuario de MySQL debe poder crear y eliminar una base temporal. Las pruebas crean una base con un nombre aleatorio, comprueban el inicio de sesión, los CRUD, las relaciones y los reportes, y eliminan esa base al terminar. No usan ni modifican los datos de `dbgastos`.
+
+## Datos de ejemplo
+
+Para cargar categorías, cuentas, gastos, presupuestos y un gasto recurrente de demostración:
+
+```bash
+flask --app app cargar-ejemplos
+```
+
+El comando solo funciona si las seis tablas de gastos están vacías. Los importes son ficticios y se registran en el mes actual.
