@@ -98,4 +98,3 @@ def registrar_vistas(appbuilder):
         appbuilder.add_view(vista, nombre, icon=icono, category='Gestionar', category_icon='fa-list')
     appbuilder.add_link('Dashboard', href='/dashboard', icon='fa-home')
     appbuilder.add_link('Reportes', href='/reportes', icon='fa-bar-chart')
-    appbuilder.add_link('Asistente', href='/asistente', icon='fa-lightbulb-o')

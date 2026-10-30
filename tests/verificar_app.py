@@ -22,6 +22,13 @@ with app.app_context():
     assert client.post('/login/', data={'username': 'prueba@example.com', 'password': 'clave-segura'}).status_code == 302
     dashboard = client.get('/dashboard')
     assert dashboard.status_code == 200 and b'chat-abrir' in dashboard.data
+    for ruta in ('/dashboard', '/reportes', '/categoriaview/list/', '/gastoview/add', '/asistente'):
+        pagina = client.get(ruta).get_data(as_text=True)
+        for destino in ('/dashboard', '/gastoview/list/', '/categoriaview/list/', '/subcategoriaview/list/', '/cuentaview/list/', '/presupuestoview/list/', '/gastorecurrenteview/list/', '/reportes'):
+            assert f'href="{destino}"' in pagina, (ruta, destino)
+        assert 'href="/asistente"' not in pagina
+        assert 'aria-label="Cerrar sesión"' in pagina and 'href="/users/list/"' in pagina
+
     from unittest.mock import patch
     from app.chat_ia import contexto_modulos
     assert set(contexto_modulos()) == {'categorias', 'subcategorias', 'cuentas', 'gastos', 'presupuestos', 'gastos_recurrentes'}

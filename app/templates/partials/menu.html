@@ -1,0 +1,26 @@
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="{{ url_for('dashboard') }}"><span class="site-brand-mark" aria-hidden="true">✳</span> Mis gastos</a>
+    {% if current_user.is_authenticated %}
+    <nav class="site-nav" aria-label="Navegación principal">
+      {% for nombre, destino, prefijo in [
+        ('Inicio', '/dashboard', '/dashboard'),
+        ('Gastos', '/gastoview/list/', '/gastoview/'),
+        ('Categorías', '/categoriaview/list/', '/categoriaview/'),
+        ('Subcategorías', '/subcategoriaview/list/', '/subcategoriaview/'),
+        ('Cuentas', '/cuentaview/list/', '/cuentaview/'),
+        ('Presupuestos', '/presupuestoview/list/', '/presupuestoview/'),
+        ('Recurrentes', '/gastorecurrenteview/list/', '/gastorecurrenteview/'),
+        ('Reportes', '/reportes', '/reportes')
+      ] %}
+        <a href="{{ destino }}"{% if request.path.startswith(prefijo) %} class="site-nav-active" aria-current="page"{% endif %}>{{ nombre }}</a>
+      {% endfor %}
+      <details class="site-security"><summary>Mi cuenta</summary><div class="site-security-menu"><a href="/users/userinfo/">Mi perfil</a><a href="/resetmypassword/form">Cambiar contraseña</a></div></details>
+      {% if 'Admin' in current_user.roles | map(attribute='name') | list %}
+      <details class="site-security"><summary>Seguridad</summary><div class="site-security-menu"><a href="/users/list/">Usuarios</a><a href="/roles/list/">Roles</a><a href="/groups/list/">Grupos</a></div></details>
+      {% endif %}
+      <a class="site-logout" href="{{ url_for('AuthDBView.logout') }}" title="Cerrar sesión" aria-label="Cerrar sesión"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2"/><path d="M14 16l4-4-4-4M18 12H8"/></svg></a>
+    </nav>
+    {% endif %}
+  </div>
+</header>

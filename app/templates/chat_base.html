@@ -1,4 +1,9 @@
 {% extends 'appbuilder/baselayout.html' %}
+{% block head_css %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='menu.css') }}">
+{% endblock %}
+{% block navbar %}{% include 'partials/menu.html' %}{% endblock %}
 {% block body %}
 {{ super() }}
 {% if current_user.is_authenticated %}{% include 'partials/chat.html' %}{% endif %}

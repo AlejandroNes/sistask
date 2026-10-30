@@ -1,5 +1,5 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Reportes · Mis gastos</title><link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}"></head>
-<body><header class="topbar"><div class="topbar-inner"><a class="brand" href="/dashboard"><span class="brand-mark">✳</span> Mis gastos</a><nav class="dashboard-nav"><a href="/dashboard">Dashboard</a><a href="/gastoview/list/">Gastos</a><a href="/logout/">Salir</a></nav></div></header>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Reportes · Mis gastos</title><link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='menu.css') }}"></head>
+<body>{% include 'partials/menu.html' %}
 <main><div class="heading"><div><h1>Reportes</h1><p class="intro">Consulta los movimientos de un mes.</p></div></div>
 <form class="report-filter" method="get"><label>Mes <input name="mes" type="number" min="1" max="12" value="{{ mes }}" required></label><label>Año <input name="anio" type="number" min="1" max="9999" value="{{ anio }}" required></label><button type="submit">Consultar</button><button type="submit" name="formato" value="pdf">Descargar PDF</button></form>
 {% for titulo, filas in [('Gastos por categoría', categorias), ('Gastos por cuenta', cuentas)] %}

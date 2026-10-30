@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard · Mis gastos</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='menu.css') }}">
 </head>
 <body>
-  <header class="topbar"><div class="topbar-inner"><a class="brand" href="/dashboard"><span class="brand-mark">✳</span> Mis gastos</a><nav class="dashboard-nav"><a href="/gastoview/list/">Gastos</a><a href="/categoriaview/list/">Categorías</a><a href="/subcategoriaview/list/">Subcategorías</a><a href="/cuentaview/list/">Cuentas</a><a href="/presupuestoview/list/">Presupuestos</a><a href="/gastorecurrenteview/list/">Recurrentes</a><a href="/reportes">Reportes</a><a href="/asistente">Asistente</a><a href="/logout/">Salir</a></nav></div></header>
+  {% include 'partials/menu.html' %}
   <main>
     {% with mensajes = get_flashed_messages(with_categories=true) %}
       {% for tipo, mensaje in mensajes %}<div class="aviso" role="status">{{ mensaje }}</div>{% endfor %}
