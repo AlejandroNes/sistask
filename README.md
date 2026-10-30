@@ -52,3 +52,13 @@ En el dashboard encontrarás enlaces para gestionar las seis tablas. Primero cre
 La página de reportes permite filtrar gastos por categoría y por cuenta, y comparar el presupuesto con lo gastado. El asistente usa un modelo Naive Bayes local: necesita al menos tres gastos con descripción en dos subcategorías distintas y palabras conocidas. La sugerencia se debe revisar antes de registrar un gasto; el asistente no crea ni modifica registros.
 
 La aplicación tiene autenticación local y datos compartidos entre los usuarios autorizados; no implementa cuentas ni datos privados separados por usuario. No hay registro público ni recuperación de contraseña por correo.
+
+## Comprobación del proyecto
+
+Para ejecutar las pruebas de integración con MySQL:
+
+```bash
+python tests/ejecutar.py
+```
+
+El usuario de MySQL debe poder crear y eliminar una base temporal. Las pruebas crean una base con un nombre aleatorio, comprueban el inicio de sesión, los CRUD, las relaciones y los reportes, y eliminan esa base al terminar. No usan ni modifican los datos de `dbgastos`.

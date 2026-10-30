@@ -9,6 +9,9 @@
 <body>
   <header class="topbar"><div class="topbar-inner"><a class="brand" href="/dashboard"><span class="brand-mark">✳</span> Mis gastos</a><nav class="dashboard-nav"><a href="/gastoview/list/">Gastos</a><a href="/categoriaview/list/">Categorías</a><a href="/subcategoriaview/list/">Subcategorías</a><a href="/cuentaview/list/">Cuentas</a><a href="/presupuestoview/list/">Presupuestos</a><a href="/gastorecurrenteview/list/">Recurrentes</a><a href="/reportes">Reportes</a><a href="/asistente">Asistente</a><a href="/logout/">Salir</a></nav></div></header>
   <main>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for tipo, mensaje in mensajes %}<div class="aviso" role="status">{{ mensaje }}</div>{% endfor %}
+    {% endwith %}
     <div class="heading"><div><p class="period">{{ periodo }}</p><h1>Tu dinero, más claro.</h1><p class="intro">Un vistazo a tus gastos y presupuestos de este mes.</p></div><span class="date-badge">Resumen mensual</span></div>
     <section class="overview" aria-label="Resumen del mes">
       <div class="main-stat"><span class="stat-label">Gastos del mes</span><strong>{{ '{:,.2f}'.format(gastos_mes) }}</strong><span class="stat-foot">Total registrado este mes</span></div>

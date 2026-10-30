@@ -6,6 +6,7 @@ from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder.views import IndexView
 from wtforms.validators import DataRequired, NumberRange
 
+from app import db
 from app.models import Categoria, Subcategoria, Cuenta, Gasto, Presupuesto, GastoRecurrente
 
 
@@ -21,6 +22,10 @@ class CategoriaView(ModelView):
     add_columns = edit_columns = ['nombre', 'descripcion']
     label_columns = {'nombre': 'Nombre', 'descripcion': 'Descripción'}
 
+    def pre_delete(self, item):
+        if item.subcategorias or item.presupuestos:
+            raise ValueError('No se puede eliminar la categoría: tiene subcategorías o presupuestos asociados.')
+
 
 class SubcategoriaView(ModelView):
     datamodel = SQLAInterface(Subcategoria)
@@ -28,11 +33,19 @@ class SubcategoriaView(ModelView):
     add_columns = edit_columns = ['nombre', 'categoria']
     label_columns = {'nombre': 'Nombre', 'categoria': 'Categoría'}
 
+    def pre_delete(self, item):
+        if item.gastos or item.gastos_recurrentes:
+            raise ValueError('No se puede eliminar la subcategoría: tiene gastos asociados.')
+
 
 class CuentaView(ModelView):
     datamodel = SQLAInterface(Cuenta)
     list_columns = add_columns = edit_columns = ['nombre', 'saldo_inicial']
     label_columns = {'nombre': 'Nombre', 'saldo_inicial': 'Saldo inicial'}
+
+    def pre_delete(self, item):
+        if item.gastos or item.gastos_recurrentes:
+            raise ValueError('No se puede eliminar la cuenta: tiene gastos asociados.')
 
 
 class GastoView(ModelView):
@@ -52,6 +65,18 @@ class PresupuestoView(ModelView):
         'mes': [DataRequired(), NumberRange(min=1, max=12)],
         'anio': [DataRequired(), NumberRange(min=1, max=9999)],
     }
+
+    def _validar_periodo(self, item):
+        # Evita guardar dos límites para la misma categoría y período.
+        with db.session.no_autoflush:
+            existente = db.session.query(Presupuesto).filter_by(
+                categoria_id=item.categoria.id, mes=item.mes, anio=item.anio
+            ).first()
+        if existente and existente.id != item.id:
+            raise ValueError('Ya existe un presupuesto para esta categoría, mes y año.')
+
+    pre_add = _validar_periodo
+    pre_update = _validar_periodo
 
 
 class GastoRecurrenteView(ModelView):
