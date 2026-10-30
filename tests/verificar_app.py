@@ -31,7 +31,8 @@ with app.app_context():
 
     from unittest.mock import patch
     from app.chat_ia import contexto_modulos
-    assert set(contexto_modulos()) == {'categorias', 'subcategorias', 'cuentas', 'gastos', 'presupuestos', 'gastos_recurrentes'}
+    with patch('app.chat_ia.puede_ver', return_value=True):
+        assert set(contexto_modulos()) == {'categorias', 'subcategorias', 'cuentas', 'gastos', 'presupuestos', 'gastos_recurrentes'}
     with patch('app.chat_ia.consultar_groq', return_value='Respuesta de prueba') as consulta:
         respuesta = client.post('/api/chat', json={'mensajes': [{'role': 'user', 'content': '¿Cuánto gasté?'}]})
         assert respuesta.status_code == 200 and respuesta.json['respuesta'] == 'Respuesta de prueba'
@@ -131,4 +132,31 @@ with app.app_context():
         response = client2.post('/' + vista + '/delete/' + str(ident), data={'csrf_token': token})
         db.session.expire_all()
         assert response.status_code == 302 and db.session.get(model, ident) is None, vista
-    print('Acceso, CSRF, seis CRUD, relaciones, dashboard, reportes y asistente: correctos.')
+    # Verificar un usuario real del rol Public, no solo el rol administrador.
+    client2.get('/logout/')
+    g.pop('_login_user', None)
+    g.pop('csrf_token', None)
+    app.config['WTF_CSRF_ENABLED'] = False
+    rol_public = sm.find_role('Public')
+    assert sm.add_user('usuario-publico', 'Prueba', 'Publico', 'publico@example.com', rol_public, 'clave-segura')
+    publico = app.test_client()
+    assert publico.post('/login/', data={'username': 'publico@example.com', 'password': 'clave-segura'}).status_code == 302
+    inicio = publico.get('/dashboard').get_data(as_text=True)
+    assert 'Sin acceso' in inicio and 'No tienes permiso para ver los gastos' in inicio
+    for destino in ('/gastoview/list/', '/categoriaview/list/', '/subcategoriaview/list/', '/cuentaview/list/', '/presupuestoview/list/', '/gastorecurrenteview/list/', '/reportes', '/users/list/', '/roles/list/'):
+        assert f'href="{destino}"' not in inicio, destino
+    assert publico.get('/gastoview/list/').status_code == 403
+    assert publico.get('/reportes').status_code == 403
+    assert publico.get('/asistente').status_code == 403
+    def inspeccionar_contexto(mensajes):
+        datos = contexto_modulos()
+        assert all(modulo.get('sin_permiso') for modulo in datos.values())
+        return 'Sin acceso a datos restringidos'
+    with patch('app.chat_ia.consultar_groq', side_effect=inspeccionar_contexto):
+        assert publico.post('/api/chat', json={'mensajes': [{'role': 'user', 'content': '¿Qué datos hay?'}]}).status_code == 200
+    permiso = sm.find_permission_view_menu('can_list', 'CategoriaView')
+    sm.add_permission_role(rol_public, permiso)
+    inicio = publico.get('/dashboard').get_data(as_text=True)
+    assert 'href="/categoriaview/list/"' in inicio and 'href="/subcategoriaview/list/"' not in inicio
+    assert publico.get('/categoriaview/list/').status_code == 200
+    print('Acceso, CSRF, seis CRUD, permisos de Public, dashboard, reportes y asistente: correctos.')

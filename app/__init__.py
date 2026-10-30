@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask
-from flask_login import login_required
+from flask_login import current_user, login_required
 from flask_wtf.csrf import CSRFProtect
 import click
 from flask_appbuilder import AppBuilder
@@ -51,6 +51,21 @@ with app.app_context():
     app.login_manager.login_view = 'AuthDBView.login'
 
 
+def puede_ver(vista, permiso='can_list'):
+    return current_user.is_authenticated and appbuilder.sm.has_access(permiso, vista)
+
+
+def puede_ver_reportes():
+    return all(puede_ver(vista) for vista in (
+        'GastoView', 'CategoriaView', 'SubcategoriaView', 'CuentaView', 'PresupuestoView'
+    ))
+
+
+@app.context_processor
+def permisos_menu():
+    return {'puede_ver': puede_ver, 'puede_ver_reportes': puede_ver_reportes}
+
+
 @app.cli.command('crear-admin')
 @click.option('--correo', prompt='Correo electrónico')
 @click.password_option(prompt='Contraseña', confirmation_prompt='Repite la contraseña')
@@ -96,17 +111,17 @@ def dashboard():
     gastos_mes = db.session.execute(text('''
         SELECT COALESCE(SUM(monto), 0) FROM gastos
         WHERE MONTH(fecha) = :mes AND YEAR(fecha) = :anio
-    '''), params).scalar_one()
+    '''), params).scalar_one() if puede_ver('GastoView') else None
     presupuesto = db.session.execute(text('''
         SELECT COALESCE(SUM(monto_limite), 0) FROM presupuestos
         WHERE mes = :mes AND anio = :anio
-    '''), params).scalar_one()
-    cuentas = db.session.execute(text('SELECT COUNT(*) FROM cuentas')).scalar_one()
+    '''), params).scalar_one() if puede_ver('PresupuestoView') else None
+    cuentas = db.session.execute(text('SELECT COUNT(*) FROM cuentas')).scalar_one() if puede_ver('CuentaView') else None
     recientes = db.session.execute(text('''
         SELECT g.fecha, g.descripcion, g.monto, s.nombre AS subcategoria, c.nombre AS cuenta
         FROM gastos g JOIN subcategorias s ON s.id = g.subcategoria_id
         JOIN cuentas c ON c.id = g.cuenta_id ORDER BY g.fecha DESC, g.id DESC LIMIT 6
-    ''')).mappings().all()
+    ''')).mappings().all() if puede_ver('GastoView') else None
     meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     return render_template('dashboard.html', gastos_mes=gastos_mes, presupuesto=presupuesto,
@@ -119,6 +134,8 @@ def dashboard():
 def reportes():
     from flask import abort, request, send_file
 
+    if not puede_ver_reportes():
+        abort(403)
     hoy = date.today()
     try:
         mes = int(request.args.get('mes', hoy.month))
@@ -165,6 +182,9 @@ def reportes():
 @app.route('/asistente', methods=['GET', 'POST'])
 @login_required
 def asistente():
+    from flask import abort
+    if not puede_ver('GastoView'):
+        abort(403)
     from flask_wtf import FlaskForm
     from wtforms import StringField
     from wtforms.validators import DataRequired, Length

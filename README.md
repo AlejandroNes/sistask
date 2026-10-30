@@ -51,7 +51,7 @@ En el dashboard encontrarás enlaces para gestionar las seis tablas. Primero cre
 
 La página de reportes permite filtrar gastos por categoría y por cuenta, comparar el presupuesto con lo gastado y descargar los tres reportes del período en PDF. El asistente usa un modelo Naive Bayes local: necesita al menos tres gastos con descripción en dos subcategorías distintas y palabras conocidas. La sugerencia se debe revisar antes de registrar un gasto; el asistente no crea ni modifica registros.
 
-La aplicación tiene autenticación local y datos compartidos entre los usuarios autorizados; no implementa cuentas ni datos privados separados por usuario. No hay registro público ni recuperación de contraseña por correo.
+La aplicación tiene autenticación local y datos compartidos entre los usuarios autorizados; no implementa cuentas ni datos privados separados por usuario. El menú y los datos del dashboard se ajustan a los permisos de lectura de cada rol. Los reportes requieren acceso de lectura a gastos, categorías, subcategorías, cuentas y presupuestos; el chat recibe solo datos de módulos que el usuario puede consultar. No hay registro público ni recuperación de contraseña por correo.
 
 ## Comprobación del proyecto
 

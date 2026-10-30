@@ -3,31 +3,32 @@
     <a class="site-brand" href="{{ url_for('dashboard') }}"><span class="site-brand-mark" aria-hidden="true">✳</span> Mis gastos</a>
     {% if current_user.is_authenticated %}
     <nav class="site-nav" aria-label="Navegación principal">
-      {% for nombre, destino, prefijo in [
-        ('Inicio', '/dashboard', '/dashboard'),
-        ('Gastos', '/gastoview/list/', '/gastoview/'),
-        ('Recurrentes', '/gastorecurrenteview/list/', '/gastorecurrenteview/'),
-        ('Cuentas', '/cuentaview/list/', '/cuentaview/')
+      <a href="/dashboard"{% if request.path == '/dashboard' %} class="site-nav-active" aria-current="page"{% endif %}>Inicio</a>
+      {% for nombre, destino, prefijo, vista in [
+        ('Gastos', '/gastoview/list/', '/gastoview/', 'GastoView'),
+        ('Recurrentes', '/gastorecurrenteview/list/', '/gastorecurrenteview/', 'GastoRecurrenteView'),
+        ('Cuentas', '/cuentaview/list/', '/cuentaview/', 'CuentaView')
       ] %}
-        <a href="{{ destino }}"{% if request.path.startswith(prefijo) %} class="site-nav-active" aria-current="page"{% endif %}>{{ nombre }}</a>
+        {% if puede_ver(vista) %}<a href="{{ destino }}"{% if request.path.startswith(prefijo) %} class="site-nav-active" aria-current="page"{% endif %}>{{ nombre }}</a>{% endif %}
       {% endfor %}
+      {% set ver_categorias = puede_ver('CategoriaView') %}
+      {% set ver_subcategorias = puede_ver('SubcategoriaView') %}
+      {% if ver_categorias or ver_subcategorias %}
       <details class="site-security site-categories{% if request.path.startswith('/categoriaview/') or request.path.startswith('/subcategoriaview/') %} site-section-active{% endif %}">
         <summary>Categorías</summary>
         <div class="site-security-menu">
-          <a href="/categoriaview/list/"{% if request.path.startswith('/categoriaview/') %} aria-current="page"{% endif %}>Categorías</a>
-          <a href="/subcategoriaview/list/"{% if request.path.startswith('/subcategoriaview/') %} aria-current="page"{% endif %}>Subcategorías</a>
+          {% if ver_categorias %}<a href="/categoriaview/list/"{% if request.path.startswith('/categoriaview/') %} aria-current="page"{% endif %}>Categorías</a>{% endif %}
+          {% if ver_subcategorias %}<a href="/subcategoriaview/list/"{% if request.path.startswith('/subcategoriaview/') %} aria-current="page"{% endif %}>Subcategorías</a>{% endif %}
         </div>
       </details>
-      {% for nombre, destino, prefijo in [
-        ('Presupuestos', '/presupuestoview/list/', '/presupuestoview/'),
-        ('Reportes', '/reportes', '/reportes')
-      ] %}
-        <a href="{{ destino }}"{% if request.path.startswith(prefijo) %} class="site-nav-active" aria-current="page"{% endif %}>{{ nombre }}</a>
-      {% endfor %}
-      <details class="site-security"><summary>Mi cuenta</summary><div class="site-security-menu"><a href="/users/userinfo/">Mi perfil</a><a href="/resetmypassword/form">Cambiar contraseña</a></div></details>
-      {% if 'Admin' in current_user.roles | map(attribute='name') | list %}
-      <details class="site-security"><summary>Seguridad</summary><div class="site-security-menu"><a href="/users/list/">Usuarios</a><a href="/roles/list/">Roles</a><a href="/groups/list/">Grupos</a></div></details>
       {% endif %}
+      {% if puede_ver('PresupuestoView') %}<a href="/presupuestoview/list/"{% if request.path.startswith('/presupuestoview/') %} class="site-nav-active" aria-current="page"{% endif %}>Presupuestos</a>{% endif %}
+      {% if puede_ver_reportes() %}<a href="/reportes"{% if request.path.startswith('/reportes') %} class="site-nav-active" aria-current="page"{% endif %}>Reportes</a>{% endif %}
+      {% set ver_perfil = puede_ver('UserDBModelView', 'can_userinfo') %}
+      {% set cambiar_clave = puede_ver('ResetMyPasswordView', 'can_this_form_get') %}
+      {% if ver_perfil or cambiar_clave %}<details class="site-security"><summary>Mi cuenta</summary><div class="site-security-menu">{% if ver_perfil %}<a href="/users/userinfo/">Mi perfil</a>{% endif %}{% if cambiar_clave %}<a href="/resetmypassword/form">Cambiar contraseña</a>{% endif %}</div></details>{% endif %}
+      {% set ver_usuarios = puede_ver('UserDBModelView') %}{% set ver_roles = puede_ver('RoleModelView') %}{% set ver_grupos = puede_ver('UserGroupModelView') %}
+      {% if ver_usuarios or ver_roles or ver_grupos %}<details class="site-security"><summary>Seguridad</summary><div class="site-security-menu">{% if ver_usuarios %}<a href="/users/list/">Usuarios</a>{% endif %}{% if ver_roles %}<a href="/roles/list/">Roles</a>{% endif %}{% if ver_grupos %}<a href="/groups/list/">Grupos</a>{% endif %}</div></details>{% endif %}
       <a class="site-logout" href="{{ url_for('AuthDBView.logout') }}" title="Cerrar sesión" aria-label="Cerrar sesión"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2"/><path d="M14 16l4-4-4-4M18 12H8"/></svg></a>
     </nav>
     {% endif %}
