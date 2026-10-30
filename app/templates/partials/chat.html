@@ -1,0 +1,11 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+<div id="chat-ia" class="chat-ia">
+  <button id="chat-abrir" class="chat-abrir" type="button" aria-expanded="false" aria-controls="chat-panel" aria-label="Abrir chat de gastos">✦ <span>Preguntar a la IA</span></button>
+  <section id="chat-panel" class="chat-panel" aria-label="Chat de gastos" hidden>
+    <header class="chat-header"><div><strong>Asistente de gastos</strong><span>Con Groq y datos del BCB</span></div><button id="chat-cerrar" type="button" aria-label="Cerrar chat">×</button></header>
+    <p class="chat-nota">Tus preguntas y datos de gastos se envían a Groq para responder.</p>
+    <div id="chat-mensajes" class="chat-mensajes" aria-live="polite"><div class="chat-burbuja asistente">Hola. Pregúntame por tus gastos, presupuestos o el tipo de cambio oficial de Bolivia.</div></div>
+    <form id="chat-form" class="chat-form"><input type="hidden" id="chat-csrf" value="{{ csrf_token() }}"><label class="chat-sr" for="chat-texto">Escribe tu pregunta</label><textarea id="chat-texto" rows="2" maxlength="2000" placeholder="Escribe tu pregunta..." required></textarea><button id="chat-enviar" type="submit">Enviar</button></form>
+  </section>
+</div>
+<script src="{{ url_for('static', filename='chat.js') }}" defer></script>

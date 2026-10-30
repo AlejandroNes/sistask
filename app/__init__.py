@@ -46,7 +46,7 @@ from app.security import EmailSecurityManager
 from app.views import InicioView, registrar_vistas
 
 with app.app_context():
-    appbuilder = AppBuilder(app, db.session, indexview=InicioView, security_manager_class=EmailSecurityManager)
+    appbuilder = AppBuilder(app, db.session, indexview=InicioView, security_manager_class=EmailSecurityManager, base_template='chat_base.html')
     registrar_vistas(appbuilder)
     app.login_manager.login_view = 'AuthDBView.login'
 
@@ -184,3 +184,27 @@ def asistente():
         ''')).all()
         sugerencia = sugerir_subcategoria(form.descripcion.data, ejemplos)
     return render_template('asistente.html', form=form, consultado=consultado, sugerencia=sugerencia)
+
+
+@app.route('/api/chat', methods=['POST'])
+@login_required
+def api_chat():
+    from flask import jsonify, request
+    from app.chat_ia import consultar_groq
+
+    cuerpo = request.get_json(silent=True)
+    mensajes = cuerpo.get('mensajes') if isinstance(cuerpo, dict) else None
+    if not isinstance(mensajes, list) or not 1 <= len(mensajes) <= 12:
+        return jsonify(error='Envía una conversación válida.'), 400
+    for mensaje in mensajes:
+        if (not isinstance(mensaje, dict) or mensaje.get('role') not in ('user', 'assistant')
+                or not isinstance(mensaje.get('content'), str)
+                or not 1 <= len(mensaje['content'].strip()) <= 2000):
+            return jsonify(error='Cada mensaje debe contener texto válido de hasta 2000 caracteres.'), 400
+    if mensajes[-1]['role'] != 'user':
+        return jsonify(error='La conversación debe terminar con una pregunta.'), 400
+    try:
+        respuesta = consultar_groq([{'role': m['role'], 'content': m['content'].strip()} for m in mensajes])
+    except RuntimeError as exc:
+        return jsonify(error=str(exc)), 503
+    return jsonify(respuesta=respuesta)

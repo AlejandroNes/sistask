@@ -1,6 +1,6 @@
 # Mis gastos
 
-Aplicación local de gestión de gastos con Python, Flask-AppBuilder y MySQL. Incluye CRUD de categorías, subcategorías, cuentas, gastos, presupuestos y gastos recurrentes; un dashboard; tres reportes mensuales; y un clasificador local que sugiere subcategorías a partir de gastos anteriores. No usa servicios externos.
+Aplicación local de gestión de gastos con Python, Flask-AppBuilder y MySQL. Incluye CRUD de categorías, subcategorías, cuentas, gastos, presupuestos y gastos recurrentes; un dashboard; tres reportes mensuales; y un clasificador local que sugiere subcategorías a partir de gastos anteriores. El asistente de chat utiliza Groq y consulta el tipo de cambio del BCB por internet.
 
 ## Instalación
 
@@ -72,3 +72,9 @@ flask --app app cargar-ejemplos
 ```
 
 El comando solo funciona si las seis tablas de gastos están vacías. Los importes son ficticios y se registran en el mes actual.
+
+## Chat con inteligencia artificial
+
+El chat flotante usa Groq y consulta el tipo de cambio oficial publicado por el Banco Central de Bolivia (BCB). Configura `GROQ_API_KEY` en `.env` y reinicia la aplicación. Opcionalmente puedes cambiar `GROQ_MODEL`; por defecto se usa `llama-3.3-70b-versatile`.
+
+Al enviar una pregunta se comparte con Groq la conversación reciente y datos de los seis módulos, incluidos nombres, importes y descripciones. Las consultas son de solo lectura; el chat no modifica registros. Para controlar el tamaño, incluye hasta 100 registros por módulo y recorta los campos de texto de más de 300 caracteres; indica al modelo si hay datos incompletos. Si no se puede consultar al BCB, el asistente no debe presentar una tasa como actual. El historial se mantiene solo en la ventana del navegador durante la sesión de chat.

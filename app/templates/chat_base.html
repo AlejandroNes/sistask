@@ -1,0 +1,5 @@
+{% extends 'appbuilder/baselayout.html' %}
+{% block body %}
+{{ super() }}
+{% if current_user.is_authenticated %}{% include 'partials/chat.html' %}{% endif %}
+{% endblock %}
