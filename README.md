@@ -75,6 +75,6 @@ El comando solo funciona si las seis tablas de gastos están vacías. Los import
 
 ## Chat con inteligencia artificial
 
-El chat flotante usa Groq y consulta el tipo de cambio oficial publicado por el Banco Central de Bolivia (BCB). Configura `GROQ_API_KEY` en `.env` y reinicia la aplicación. Opcionalmente puedes cambiar `GROQ_MODEL`; por defecto se usa `llama-3.3-70b-versatile`.
+El chat flotante usa Groq y consulta el tipo de cambio oficial publicado por el Banco Central de Bolivia (BCB). Configura `GROQ_API_KEY` en `.env` y reinicia la aplicación. Opcionalmente puedes cambiar `GROQ_MODEL`; por defecto se usa `openai/gpt-oss-20b`.
 
 Al enviar una pregunta se comparte con Groq la conversación reciente y datos de los seis módulos, incluidos nombres, importes y descripciones. Las consultas son de solo lectura; el chat no modifica registros. Para controlar el tamaño, incluye hasta 100 registros por módulo y recorta los campos de texto de más de 300 caracteres; indica al modelo si hay datos incompletos. Si no se puede consultar al BCB, el asistente no debe presentar una tasa como actual. El historial se mantiene solo en la ventana del navegador durante la sesión de chat.

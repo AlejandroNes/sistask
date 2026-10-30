@@ -107,11 +107,12 @@ def consultar_groq(mensajes):
         'Los datos financieros son compartidos entre los usuarios autorizados del sistema. '
         'Contexto de solo lectura en JSON: ' + json.dumps(contexto, ensure_ascii=False, default=str)
     )
-    cuerpo = json.dumps({'model': os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+    cuerpo = json.dumps({'model': os.environ.get('GROQ_MODEL', 'openai/gpt-oss-20b'),
                          'messages': [{'role': 'system', 'content': instrucciones}] + mensajes,
                          'temperature': 0.2, 'max_completion_tokens': 800}).encode('utf-8')
     peticion = Request(GROQ_URL, data=cuerpo, headers={'Authorization': 'Bearer ' + clave,
-                       'Content-Type': 'application/json'}, method='POST')
+                       'Content-Type': 'application/json', 'Accept': 'application/json',
+                       'User-Agent': 'MisGastos/1.0'}, method='POST')
     try:
         with urlopen(peticion, timeout=35) as respuesta:
             datos = json.load(respuesta)
@@ -124,6 +125,8 @@ def consultar_groq(mensajes):
             raise RuntimeError('Groq rechazó la clave configurada. Revisa GROQ_API_KEY.') from exc
         if exc.code == 403:
             raise RuntimeError('La conexión con Groq fue rechazada (403). Revisa los permisos de la clave, el modelo y la conexión de red.') from exc
+        if exc.code == 404:
+            raise RuntimeError('El modelo configurado no está disponible para esta clave. Revisa GROQ_MODEL.') from exc
         if exc.code == 429:
             raise RuntimeError('Groq alcanzó el límite de solicitudes. Inténtalo nuevamente en unos minutos.') from exc
         raise RuntimeError('Groq no pudo procesar la consulta. Inténtalo nuevamente.') from exc
