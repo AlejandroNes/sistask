@@ -25,6 +25,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = URL.create(
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+# Registrar los modelos del dominio antes de inicializar Flask-AppBuilder.
+from app import models  # noqa: E402, F401
+
 with app.app_context():
     appbuilder = AppBuilder(app, db.session)
 
