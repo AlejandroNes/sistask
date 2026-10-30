@@ -48,6 +48,18 @@ from app.views import InicioView, registrar_vistas
 with app.app_context():
     appbuilder = AppBuilder(app, db.session, indexview=InicioView, security_manager_class=EmailSecurityManager, base_template='chat_base.html')
     registrar_vistas(appbuilder)
+    # El rol Public puede consultar gastos; las demás operaciones requieren otro rol.
+    rol_public = appbuilder.sm.find_role('Public')
+    if rol_public:
+        for permiso in list(rol_public.permissions):
+            if (permiso.view_menu and permiso.view_menu.name == 'GastoView'
+                    and permiso.permission and permiso.permission.name not in ('can_list', 'can_show')):
+                appbuilder.sm.del_permission_role(rol_public, permiso)
+        for nombre in ('can_list', 'can_show'):
+            permiso = appbuilder.sm.find_permission_view_menu(nombre, 'GastoView')
+            if permiso is None:
+                raise RuntimeError(f'No se encontró el permiso {nombre} para GastoView')
+            appbuilder.sm.add_permission_role(rol_public, permiso)
     app.login_manager.login_view = 'AuthDBView.login'
 
 
@@ -59,6 +71,14 @@ def puede_ver_reportes():
     return all(puede_ver(vista) for vista in (
         'GastoView', 'CategoriaView', 'SubcategoriaView', 'CuentaView', 'PresupuestoView'
     ))
+
+
+@app.before_request
+def proteger_gastos_publicos():
+    # FAB también aplica el rol Public a visitantes anónimos; estos deben iniciar sesión.
+    from flask import request
+    if request.endpoint and request.endpoint.startswith('GastoView.') and not current_user.is_authenticated:
+        return app.login_manager.unauthorized()
 
 
 @app.context_processor

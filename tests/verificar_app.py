@@ -137,20 +137,35 @@ with app.app_context():
     g.pop('_login_user', None)
     g.pop('csrf_token', None)
     app.config['WTF_CSRF_ENABLED'] = False
+    categoria_prueba = Categoria(nombre='Categoría de lectura')
+    subcategoria_prueba = Subcategoria(nombre='Subcategoría de lectura', categoria=categoria_prueba)
+    cuenta_prueba = Cuenta(nombre='Cuenta de lectura', saldo_inicial=0)
+    gasto_prueba = Gasto(subcategoria=subcategoria_prueba, cuenta=cuenta_prueba,
+                         monto=Decimal('25.00'), descripcion='Gasto de lectura', fecha=date.today())
+    db.session.add_all([gasto_prueba, cuenta_prueba])
+    db.session.commit()
+    gasto_id = gasto_prueba.id
     rol_public = sm.find_role('Public')
     assert sm.add_user('usuario-publico', 'Prueba', 'Publico', 'publico@example.com', rol_public, 'clave-segura')
     publico = app.test_client()
     assert publico.post('/login/', data={'username': 'publico@example.com', 'password': 'clave-segura'}).status_code == 302
     inicio = publico.get('/dashboard').get_data(as_text=True)
-    assert 'Sin acceso' in inicio and 'No tienes permiso para ver los gastos' in inicio
-    for destino in ('/gastoview/list/', '/categoriaview/list/', '/subcategoriaview/list/', '/cuentaview/list/', '/presupuestoview/list/', '/gastorecurrenteview/list/', '/reportes', '/users/list/', '/roles/list/'):
+    assert 'href="/gastoview/list/"' in inicio
+    assert 'Sin acceso' in inicio
+    for destino in ('/categoriaview/list/', '/subcategoriaview/list/', '/cuentaview/list/', '/presupuestoview/list/', '/gastorecurrenteview/list/', '/reportes', '/users/list/', '/roles/list/'):
         assert f'href="{destino}"' not in inicio, destino
-    assert publico.get('/gastoview/list/').status_code == 403
+    listado_publico = publico.get('/gastoview/list/')
+    assert listado_publico.status_code == 200 and b'Gasto de lectura' in listado_publico.data
+    assert publico.get(f'/gastoview/show/{gasto_id}').status_code == 200
+    for ruta in ('/gastoview/add', '/gastoview/edit/1', '/gastoview/delete/1'):
+        assert publico.get(ruta).status_code == 403, ruta
+        assert publico.post(ruta, data={}).status_code == 403, ruta
     assert publico.get('/reportes').status_code == 403
-    assert publico.get('/asistente').status_code == 403
+    assert publico.get('/asistente').status_code == 200
     def inspeccionar_contexto(mensajes):
         datos = contexto_modulos()
-        assert all(modulo.get('sin_permiso') for modulo in datos.values())
+        assert not datos['gastos'].get('sin_permiso', False)
+        assert all(modulo.get('sin_permiso') for nombre, modulo in datos.items() if nombre != 'gastos')
         return 'Sin acceso a datos restringidos'
     with patch('app.chat_ia.consultar_groq', side_effect=inspeccionar_contexto):
         assert publico.post('/api/chat', json={'mensajes': [{'role': 'user', 'content': '¿Qué datos hay?'}]}).status_code == 200
@@ -159,4 +174,11 @@ with app.app_context():
     inicio = publico.get('/dashboard').get_data(as_text=True)
     assert 'href="/categoriaview/list/"' in inicio and 'href="/subcategoriaview/list/"' not in inicio
     assert publico.get('/categoriaview/list/').status_code == 200
+    db.session.delete(gasto_prueba)
+    db.session.flush()
+    db.session.delete(subcategoria_prueba)
+    db.session.delete(cuenta_prueba)
+    db.session.flush()
+    db.session.delete(categoria_prueba)
+    db.session.commit()
     print('Acceso, CSRF, seis CRUD, permisos de Public, dashboard, reportes y asistente: correctos.')
