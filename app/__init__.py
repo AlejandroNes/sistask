@@ -2,9 +2,14 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask
+from flask_login import current_user, login_required
+from flask_wtf.csrf import CSRFProtect
+import click
 from flask_appbuilder import AppBuilder
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.engine import URL
+from werkzeug.security import generate_password_hash
+from email_validator import validate_email, EmailNotValidError
 
 load_dotenv()
 
@@ -22,15 +27,96 @@ app.config['SQLALCHEMY_DATABASE_URI'] = URL.create(
     database=os.environ.get('MYSQL_DATABASE', 'dbgastos'),
     query={'charset': 'utf8mb4'},
 )
+CSRFProtect(app)
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['APP_NAME'] = 'Mis gastos'
+app.config['BABEL_DEFAULT_LOCALE'] = 'es'
+app.config['AUTH_USER_REGISTRATION'] = False
+app.config['FAB_PASSWORD_HASH_METHOD'] = 'pbkdf2:sha256:1000000'
+app.config['AUTH_DB_FAKE_PASSWORD_HASH_CHECK'] = generate_password_hash(
+    'comprobacion-sin-usuario', method=app.config['FAB_PASSWORD_HASH_METHOD']
+)
 
 db = SQLAlchemy(app)
 
 # Registrar los modelos del dominio antes de inicializar Flask-AppBuilder.
 from app import models  # noqa: E402, F401
+from app.security import EmailSecurityManager
+from app.views import InicioView, registrar_vistas
 
 with app.app_context():
-    appbuilder = AppBuilder(app, db.session)
+    appbuilder = AppBuilder(app, db.session, indexview=InicioView, security_manager_class=EmailSecurityManager, base_template='chat_base.html')
+    registrar_vistas(appbuilder)
+    # El rol Public puede consultar gastos; las demás operaciones requieren otro rol.
+    rol_public = appbuilder.sm.find_role('Public')
+    if rol_public:
+        for permiso in list(rol_public.permissions):
+            if (permiso.view_menu and permiso.view_menu.name == 'GastoView'
+                    and permiso.permission and permiso.permission.name not in ('can_list', 'can_show')):
+                appbuilder.sm.del_permission_role(rol_public, permiso)
+        for nombre in ('can_list', 'can_show'):
+            permiso = appbuilder.sm.find_permission_view_menu(nombre, 'GastoView')
+            if permiso is None:
+                raise RuntimeError(f'No se encontró el permiso {nombre} para GastoView')
+            appbuilder.sm.add_permission_role(rol_public, permiso)
+    app.login_manager.login_view = 'AuthDBView.login'
+
+
+def puede_ver(vista, permiso='can_list'):
+    return current_user.is_authenticated and appbuilder.sm.has_access(permiso, vista)
+
+
+def puede_ver_reportes():
+    return all(puede_ver(vista) for vista in (
+        'GastoView', 'CategoriaView', 'SubcategoriaView', 'CuentaView', 'PresupuestoView'
+    ))
+
+
+@app.before_request
+def proteger_gastos_publicos():
+    # FAB también aplica el rol Public a visitantes anónimos; estos deben iniciar sesión.
+    from flask import request
+    if request.endpoint and request.endpoint.startswith('GastoView.') and not current_user.is_authenticated:
+        return app.login_manager.unauthorized()
+
+
+@app.context_processor
+def permisos_menu():
+    return {'puede_ver': puede_ver, 'puede_ver_reportes': puede_ver_reportes}
+
+
+@app.cli.command('crear-admin')
+@click.option('--correo', prompt='Correo electrónico')
+@click.password_option(prompt='Contraseña', confirmation_prompt='Repite la contraseña')
+def crear_admin(correo, password):
+    """Crear un administrador local usando correo y contraseña."""
+    correo = correo.strip().lower()
+    try:
+        correo = validate_email(correo, check_deliverability=False).normalized.lower()
+    except EmailNotValidError as exc:
+        raise click.ClickException(f'Correo inválido: {exc}')
+    if len(correo) > 64:
+        raise click.ClickException('El correo debe tener como máximo 64 caracteres.')
+    if not password:
+        raise click.ClickException('La contraseña no puede estar vacía.')
+    sm = appbuilder.sm
+    if sm.find_user(email=correo) or sm.find_user(username=correo):
+        raise click.ClickException('Ya existe un usuario con ese correo.')
+    if not sm.add_user(correo, 'Administrador', 'Local', correo, sm.find_role('Admin'), password):
+        raise click.ClickException('No se pudo crear el administrador.')
+    click.echo('Administrador creado correctamente.')
+
+@app.cli.command('cargar-ejemplos')
+def cargar_ejemplos_comando():
+    """Cargar ejemplos cuando las tablas de gastos estén vacías."""
+    from app.ejemplos import cargar_ejemplos
+    try:
+        cargar_ejemplos()
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
+    click.echo('Datos de ejemplo cargados correctamente.')
+
 
 from datetime import date
 from flask import render_template
@@ -38,25 +124,127 @@ from sqlalchemy import text
 
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
     today = date.today()
     params = {'mes': today.month, 'anio': today.year}
     gastos_mes = db.session.execute(text('''
         SELECT COALESCE(SUM(monto), 0) FROM gastos
         WHERE MONTH(fecha) = :mes AND YEAR(fecha) = :anio
-    '''), params).scalar_one()
+    '''), params).scalar_one() if puede_ver('GastoView') else None
     presupuesto = db.session.execute(text('''
         SELECT COALESCE(SUM(monto_limite), 0) FROM presupuestos
         WHERE mes = :mes AND anio = :anio
-    '''), params).scalar_one()
-    cuentas = db.session.execute(text('SELECT COUNT(*) FROM cuentas')).scalar_one()
+    '''), params).scalar_one() if puede_ver('PresupuestoView') else None
+    cuentas = db.session.execute(text('SELECT COUNT(*) FROM cuentas')).scalar_one() if puede_ver('CuentaView') else None
     recientes = db.session.execute(text('''
         SELECT g.fecha, g.descripcion, g.monto, s.nombre AS subcategoria, c.nombre AS cuenta
         FROM gastos g JOIN subcategorias s ON s.id = g.subcategoria_id
         JOIN cuentas c ON c.id = g.cuenta_id ORDER BY g.fecha DESC, g.id DESC LIMIT 6
-    ''')).mappings().all()
+    ''')).mappings().all() if puede_ver('GastoView') else None
     meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
     return render_template('dashboard.html', gastos_mes=gastos_mes, presupuesto=presupuesto,
                            cuentas=cuentas, recientes=recientes,
                            periodo=f'{meses[today.month - 1]} de {today.year}')
+
+
+@app.route('/reportes')
+@login_required
+def reportes():
+    from flask import abort, request, send_file
+
+    if not puede_ver_reportes():
+        abort(403)
+    hoy = date.today()
+    try:
+        mes = int(request.args.get('mes', hoy.month))
+        anio = int(request.args.get('anio', hoy.year))
+    except (TypeError, ValueError):
+        abort(400, 'El mes y el año deben ser números.')
+    if not 1 <= mes <= 12 or not 1 <= anio <= 9999:
+        abort(400, 'El mes o el año no es válido.')
+    params = {'mes': mes, 'anio': anio}
+    categoria = db.session.execute(text('''
+        SELECT c.nombre, SUM(g.monto) AS total FROM gastos g
+        JOIN subcategorias s ON s.id = g.subcategoria_id
+        JOIN categorias c ON c.id = s.categoria_id
+        WHERE MONTH(g.fecha) = :mes AND YEAR(g.fecha) = :anio
+        GROUP BY c.id, c.nombre ORDER BY total DESC
+    '''), params).mappings().all()
+    cuenta = db.session.execute(text('''
+        SELECT c.nombre, SUM(g.monto) AS total FROM gastos g
+        JOIN cuentas c ON c.id = g.cuenta_id
+        WHERE MONTH(g.fecha) = :mes AND YEAR(g.fecha) = :anio
+        GROUP BY c.id, c.nombre ORDER BY total DESC
+    '''), params).mappings().all()
+    presupuesto = db.session.execute(text('''
+        SELECT c.nombre, p.monto_limite, COALESCE(t.total, 0) AS total,
+               p.monto_limite - COALESCE(t.total, 0) AS restante
+        FROM presupuestos p JOIN categorias c ON c.id = p.categoria_id
+        LEFT JOIN (
+            SELECT s.categoria_id, SUM(g.monto) AS total FROM gastos g
+            JOIN subcategorias s ON s.id = g.subcategoria_id
+            WHERE MONTH(g.fecha) = :mes AND YEAR(g.fecha) = :anio
+            GROUP BY s.categoria_id
+        ) t ON t.categoria_id = c.id
+        WHERE p.mes = :mes AND p.anio = :anio ORDER BY c.nombre
+    '''), params).mappings().all()
+    if request.args.get('formato') == 'pdf':
+        from app.pdf_reportes import generar_pdf
+        archivo = generar_pdf(mes, anio, categoria, cuenta, presupuesto)
+        return send_file(archivo, mimetype='application/pdf', as_attachment=True,
+                         download_name=f'reportes-{anio}-{mes:02d}.pdf')
+    return render_template('reportes.html', mes=mes, anio=anio, categorias=categoria,
+                           cuentas=cuenta, presupuestos=presupuesto)
+
+
+@app.route('/asistente', methods=['GET', 'POST'])
+@login_required
+def asistente():
+    from flask import abort
+    if not puede_ver('GastoView'):
+        abort(403)
+    from flask_wtf import FlaskForm
+    from wtforms import StringField
+    from wtforms.validators import DataRequired, Length
+    from app.assistant import sugerir_subcategoria
+
+    class ConsultaForm(FlaskForm):
+        descripcion = StringField('Descripción del gasto', validators=[DataRequired(), Length(max=200)])
+
+    form = ConsultaForm()
+    sugerencia = None
+    consultado = form.validate_on_submit()
+    if consultado:
+        ejemplos = db.session.execute(text('''
+            SELECT s.id, s.nombre, g.descripcion FROM gastos g
+            JOIN subcategorias s ON s.id = g.subcategoria_id
+            WHERE g.descripcion IS NOT NULL AND g.descripcion <> ''
+        ''')).all()
+        sugerencia = sugerir_subcategoria(form.descripcion.data, ejemplos)
+    return render_template('asistente.html', form=form, consultado=consultado, sugerencia=sugerencia)
+
+
+@app.route('/api/chat', methods=['POST'])
+@login_required
+def api_chat():
+    from flask import jsonify, request
+    from app.chat_ia import consultar_groq
+
+    cuerpo = request.get_json(silent=True)
+    mensajes = cuerpo.get('mensajes') if isinstance(cuerpo, dict) else None
+    if not isinstance(mensajes, list) or not 1 <= len(mensajes) <= 12:
+        return jsonify(error='Envía una conversación válida.'), 400
+    for mensaje in mensajes:
+        if (not isinstance(mensaje, dict) or mensaje.get('role') not in ('user', 'assistant')
+                or not isinstance(mensaje.get('content'), str)
+                or not 1 <= len(mensaje['content'].strip()) <= 2000):
+            return jsonify(error='Cada mensaje debe contener texto válido de hasta 2000 caracteres.'), 400
+    if mensajes[-1]['role'] != 'user':
+        return jsonify(error='La conversación debe terminar con una pregunta.'), 400
+    try:
+        respuesta = consultar_groq([{'role': m['role'], 'content': m['content'].strip()} for m in mensajes])
+    except RuntimeError as exc:
+        return jsonify(error=str(exc)), 503
+    return jsonify(respuesta=respuesta)
